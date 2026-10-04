@@ -2,7 +2,11 @@
 TaarifaAI — East African Investigative Journalism Assistant
 Fact-checking, Hansard analysis, procurement anomalies, bilingual reporting.
 """
-import json, urllib.request, ssl
+import json
+import ssl
+import urllib.error
+import urllib.request
+
 import streamlit as st
 
 st.set_page_config(
@@ -15,7 +19,7 @@ st.set_page_config(
 def get_key():
     try:
         return st.secrets.get("GOOGLE_API_KEY") or st.secrets.get("GEMINI_API_KEY")
-    except Exception:
+    except Exception:  # noqa: BLE001 - any secrets problem simply means no key is configured
         return None
 
 def gemini(prompt: str, key: str, max_tokens: int = 1200) -> str:
@@ -28,7 +32,6 @@ def gemini(prompt: str, key: str, max_tokens: int = 1200) -> str:
         data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json"})
     try:
-        import ssl, urllib.error
         with urllib.request.urlopen(req_obj, timeout=25,
                                      context=ssl.create_default_context()) as r:
             d = json.loads(r.read())
@@ -36,7 +39,7 @@ def gemini(prompt: str, key: str, max_tokens: int = 1200) -> str:
         if not candidates:
             return "_No response. Try again._"
         return candidates[0]["content"]["parts"][0]["text"]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - intentional UI fallback; the error type is shown, not hidden
         code = getattr(e, 'code', '')
         return f"_AI unavailable{f' (HTTP {code})' if code else ''}: {type(e).__name__}_"
 
@@ -340,7 +343,7 @@ else:
         st.session_state.taarifa_chat.append({"role": "user", "content": user_q})
         with st.chat_message("user"):
             st.markdown(user_q)
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant"):  # noqa: SIM117 - merging would re-indent a multi-line prompt string
             with st.spinner("Thinking..."):
                 history = "\n".join(f"{m['role']}: {m['content']}" for m in st.session_state.taarifa_chat[-6:])
                 prompt = f"""You are TaarifaAI, an East African investigative journalism assistant.
@@ -355,7 +358,7 @@ Always note when professional verification or legal advice is needed."""
                     resp = gemini(prompt, key)
                     st.markdown(resp)
                     st.session_state.taarifa_chat.append({"role":"assistant","content":resp})
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - the error is shown to the user
                     st.error(f"AI error: {e}")
 
 st.divider()
